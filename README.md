@@ -4,8 +4,11 @@ Transdimensional (reversible jump) Markov chain Monte Carlo tomography code.
 
 Fortran 90, C.
 
+
 Schlumberger Cambridge Research
+
 University of Edinburgh-UK
+
 
 Authors:
 
