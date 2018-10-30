@@ -1,12 +1,13 @@
 # tMCMCTomography_CODE
 
 Transdimensional (reversible jump) Markov chain Monte Carlo tomography code 
-
 Fortran 90, C.
 
-Schlumberger Cambridge Research and University of Edinburgh-UK
+Schlumberger Cambridge Research
+University of Edinburgh-UK
 
-Authors
+Authors:
+
 Erica Galetti - PostDoctoral Research, University of Edinburgh - UK.
 Helmut Wahanik - Research Scientist, Schlumberger Research
 
