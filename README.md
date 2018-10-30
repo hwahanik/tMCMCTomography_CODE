@@ -1,6 +1,6 @@
 # tMCMCTomography_CODE
 
-Transdimensional (reversible jump) Markov chain Monte Carlo tomography code 
+Transdimensional (reversible jump) Markov chain Monte Carlo tomography code.
 Fortran 90, C.
 
 Schlumberger Cambridge Research
