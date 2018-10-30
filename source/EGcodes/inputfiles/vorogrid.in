@@ -1,0 +1,20 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Input file names
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+First_p1.vor                    c: Voronoi cell nodes
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Define velocity grid
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+63     49                       c: N-S range of grid (degrees)
+-8     3                        c: W-E range of grid (degrees)
+113    89                       c: Number of velocity pixels in (latitude, longitude)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Output
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+gridv.vtx                       c: Velocity grid file (compatible with fm2dss)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for the Voronoi tesselation
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+500                             c: Maximum number of cells (has to be larger than the number of cells in the input file)
+20000                           c: nt_max
+10000                           c: nv_max

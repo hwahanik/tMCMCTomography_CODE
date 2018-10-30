@@ -1,0 +1,38 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Input files
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+First_p1.vor                    c: Voronoi cell nodes
+sources.dat                     c: File of sources
+receivers.dat                   c: File of receivers
+otimes.dat                      c: File of traveltime associations
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Define velocity grid
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+63     49                       c: N-S range of grid (degrees)
+-8     3                        c: W-E range of grid (degrees)
+113    89                       c: Number of velocity pixels in (latitude, longitude) to compute raypaths (coarser grid = faster code)
+4    4                          c: Grid dicing in latitude and longitude
+1                               c: Apply source grid refinement? (0=no,1=yes)
+4    8                          c: Dicing level and extent of refined grid
+6371.0                          c: Earth radius in km
+1                               c: Use first-order(0) or mixed-order(1) scheme
+0.5                             c: Narrow band size (0-1) as fraction of nnx*nnz
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Output files
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+rayjour.dat                     c: File of raypath journey
+raylengths.dat                  c: File of ray lengths in each cell
+raycell.dat                     c: File of ray-cell associations
+1                               c: Write velocity grid file? (1=yes, 0=no)
+gridv.vtx                       c: Velocity grid file (compatible with fm2dss)
+1                               c: Write file of raypaths? (1=yes, 0=no)
+raypaths.dat                    c: Name of raypath file
+1                               c: Which raypaths go through THIS cell and its neighbours?
+rayneigh.dat                    c: File of raypaths through cell defined above
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for the Voronoi tesselation (not very important)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+500                             c: ncell_max
+20000                           c: nt_max
+10000                           c: nv_max
+3000                            c: nray_max

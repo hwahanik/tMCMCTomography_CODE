@@ -1,0 +1,9 @@
+gauserr.txt                             c: File of Gaussian errors (output)
+sources.dat                             c: File of sources
+receivers.dat                           c: File of receivers
+otimes.dat                              c: File of traveltimes
+1                                       c: Distance dependency (=0 source-receiver distance, =1 raypath length)
+degdist.txt                             c: File of raypath lengths
+51                                      c: Random seed
+6371.0                                  c: Earth radius
+0.8   0.6                             c: a, b (to evaluate sigma=a*dist+b)

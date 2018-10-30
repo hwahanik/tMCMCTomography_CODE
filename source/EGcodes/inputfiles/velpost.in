@@ -1,0 +1,10 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Input file names
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+Vels.out                       c: Input file (binary)
+Velposts                       c: Output file (text - gets renamed to e.g. Velposts_point_1.out)
+4                              c: Number of points
+52.5   -3                      c: Coordinates
+57.5   -4.5
+58     2
+59     -2

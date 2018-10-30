@@ -1,0 +1,1414 @@
+#!/bin/bash
+######################################################################
+# LEAVE THIS AS IT IS
+# Initialise the environment
+# Use the Intel compiler and load GMT
+#module load intel # for SL6
+#export MODULEPATH=/exports/work/geos_gits/geos_applications/modulefiles/SL6:$MODULEPATH
+#module load geos/sciio/1
+#module load geos/applications/GMT/4.5
+#module load /etc/GMT
+
+######################################################################
+# Set work and bin directories
+
+bin_dir=${PROJECT}/RJ_MCMC_TOMO/bin
+plot_dir=${bin_dir}/gmtplot
+
+#mkdir ${plot_dir}
+
+# Directory for plots
+folderm=${bin_dir}/PLOTS
+
+#mkdir ${folderm}
+
+######################################################################
+# Move to bin directory
+cd ${bin_dir}
+######################################################################
+aa_max=`awk '{ if(NR==24) print $2}' mksamples.in`
+######################################################################
+# How many independent Markov chains? (i.e. how many processors was 
+# the inversion run on?
+proc=8
+######################################################################
+# If the inversion was run for fixed raypaths, which iteration number 
+# is this?
+NI=1
+
+######################################################################
+# Normalize the probability distributions to 1 in the plots?
+# 1=yes, 0=no
+normprob=1
+######################################################################
+# Choose 4 points for which velocity posteriors should be calculated 
+p1lat=52.5 ; p1long=-3
+p2lat=57.5 ; p2long=-4.5
+p3lat=58   ; p3long=2
+p4lat=59   ; p4long=-2
+######################################################################
+# Dicing in tslicess
+slth=10
+slph=10
+slthv=10
+slphv=10
+######################################################################
+#### --- GET INFORMATION FROM mksamples.in AND procsamplesplot_rjmcmc.exe.in --- ####
+# Input files for inversion (from mksamples.in)
+srcfile=`awk '{ if(NR==6) print $1}' mksamples.in`
+recfile=`awk '{ if(NR==7) print $1}' mksamples.in`
+ofile=`awk '{ if(NR==8) print $1}' mksamples.in`
+rayfile=`awk '{ if(NR==9) print $1}' mksamples.in`
+# Output files of inversion (from procsamples.in)
+avgfile=`awk '{ if(NR==26) print $1}' procsamples.in`
+firstfile=`awk '{ if(NR==38) print $1}' procsamples.in`
+lastfile=`awk '{ if(NR==39) print $1}' procsamples.in`
+maxfile=`awk '{ if(NR==29) print $1}' procsamples.in`
+medfile=`awk '{ if(NR==28) print $1}' procsamples.in`cd
+errfile=`awk '{ if(NR==27) print $1}' procsamples.in`
+evidfile=`awk '{ if(NR==32) print $1}' procsamples.in`
+ncelifile=`awk '{ if(NR==30) print $1}' procsamples.in`
+misfifile=`awk '{ if(NR==31) print $1}' procsamples.in`
+noisefile=`awk '{ if(NR==33) print $1}' procsamples.in`
+vorofile=`awk '{ if(NR==35) print $1}' procsamples.in`
+nodefile=`awk '{ if(NR==36) print $1}' procsamples.in`
+velsfile=`awk '{ if(NR==34) print $1}' procsamples.in`
+resfile=Residuals.out
+# Inversion parameters (from mksamples.in and procsamples.in)
+Nrun=`awk '{ if(NR==13) print $1}' mksamples.in`
+samples=`awk '{ if(NR==14) print $1}' mksamples.in`
+Nsamplestot=`echo ${samples}*${Nrun} | bc`
+burnin=`awk '{ if(NR==14) print $1}' procsamples.in`
+thinn=`awk '{ if(NR==15) print $1}' procsamples.in`
+window=`awk '{ if(NR==19) print $1}' mksamples.in`
+ndset=`awk '{ if(NR==31) print $1}' mksamples.in`
+usdn=`awk '{ if(NR==21) print $1}' mksamples.in`
+Xdicing=`awk '{ if(NR==20) print $2}' procsamples.in`
+Ydicing=`awk '{ if(NR==20) print $1}' procsamples.in`
+pixnp=`awk '{ if(NR==21) print $2}' procsamples.in`
+pixnt=`awk '{ if(NR==21) print $1}' procsamples.in`
+pixv=`awk '{ if(NR==22) print $1}' procsamples.in`
+pixn=`awk '{ if(NR==22) print $2}' procsamples.in`
+# Parameters for raypath calculation (from mksamples.in)
+updrays=`awk '{ if(NR==69) print $1}' mksamples.in`
+Xdicingr=`awk '{ if(NR==78) print $2}' mksamples.in`
+Ydicingr=`awk '{ if(NR==78) print $1}' mksamples.in`
+prph=`awk '{ if(NR==79) print $2}' mksamples.in`
+prth=`awk '{ if(NR==79) print $1}' mksamples.in`
+sgref=`awk '{ if(NR==80) print $1}' mksamples.in`
+sgrdl=`awk '{ if(NR==81) print $1}' mksamples.in`
+sgrerg=`awk '{ if(NR==81) print $1}' mksamples.in`
+erad=`awk '{ if(NR==82) print $1}' mksamples.in`
+ufms=`awk '{ if(NR==83) print $1}' mksamples.in`
+nbs=`awk '{ if(NR==84) print $1}' mksamples.in`
+updfile=`awk '{ if(NR==73) print $1}' mksamples.in`
+# Prior (from mksamples.in)
+north=`awk '{ if(NR==26) print $1}' mksamples.in`
+south=`awk '{ if(NR==26) print $2}' mksamples.in`
+west=`awk '{ if(NR==27) print $1}' mksamples.in`
+east=`awk '{ if(NR==27) print $2}' mksamples.in`
+ncell_min=`awk '{ if(NR==18) print $1}' mksamples.in`
+ncell_max=`awk '{ if(NR==18) print $2}' mksamples.in`
+velavg=`awk '{ if(NR==19) print $1}' mksamples.in`
+theta=`awk '{ if(NR==20) print $1}' mksamples.in`
+errtmin=`awk '{ if(NR==23) print $1}' mksamples.in`
+errtmax=`awk '{ if(NR==23) print $2}' mksamples.in`
+aa_min=`awk '{ if(NR==24) print $1}' mksamples.in`
+aa_max=`awk '{ if(NR==24) print $2}' mksamples.in`
+bb_min=`awk '{ if(NR==24) print $3}' mksamples.in`
+bb_max=`awk '{ if(NR==24) print $4}' mksamples.in`
+lambda_min=`awk '{ if(NR==25) print $1}' mksamples.in`
+lambda_max=`awk '{ if(NR==25) print $2}' mksamples.in`
+# Other parameters
+npoint_max=`awk '{ if(NR==51) print $1}' mksamples.in`
+nray_max=`awk '{ if(NR==52) print $1}' mksamples.in`
+nt_max=`awk '{ if(NR==53) print $1}' mksamples.in`
+nv_max=`awk '{ if(NR==54) print $1}' mksamples.in`
+# Set names of output images from input file names
+mappng=`echo "${avgfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+pathspng=Paths.png
+maxpng=`echo "${maxfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+medpng=`echo "${medfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+errpng=`echo "${errfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+nodeflpng=`echo "${nodefile}" | awk '{print $1"_fl.png"}'`
+nodepng=`echo "${nodefile}" | awk '{print $1".png"}'`
+iterpng=`echo "${firstfile}" "${lastfile}" | awk '{print $1"_"$2}'`
+residualspng=`echo "${resfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+cellspng=`echo "${evidfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+velspng=`echo "${velsfile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+if [[ ${usdn} == "0" || ${usdn} == "4" ]] ; then
+	noisepng=`echo "${noisefile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+elif [[ ${usdn} == "1" || ${usdn} == "2" ]] ; then
+	noiseapng=`echo "${noisefile}" | awk 'BEGIN {FS="."} ; {print $1"_a.png"}'`
+	noisebpng=`echo "${noisefile}" | awk 'BEGIN {FS="."} ; {print $1"_b.png"}'`
+elif [[ ${usdn} == "3" ]] ; then
+	noisepng=`echo "${noisefile}" | awk 'BEGIN {FS="."} ; {print $1"_l.png"}'`
+fi
+cellsipng=`echo "${ncelifile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+misfipng=`echo "${misfifile}" | awk 'BEGIN {FS="."} ; {print $1".png"}'`
+######################################################################
+
+
+# Print message to screen
+echo "########## -------------------- Plotting maps ------------------- ##########"
+
+cp ${avgfile} gridc.vtx
+
+##########************************************************************************************************************##########
+########## -------------------------------------------- INITIAL RAYPATHS -------------------------------------------- ##########
+awk -v thp=`echo ${prth}` -v php=`echo ${prph}` -v asgr=`echo ${sgref}` -v dl=`echo ${sgrdl}` -v erg=`echo ${sgrerg}` -v er=`echo ${erad}` -v fom=`echo ${ufms}` -v nb=`echo ${nbs}` '
+	{ if(NR==4) print "sources.dat                    c: File containing source positions";
+	else if(NR==5) print "receivers.dat                  c: File containing receiver positions";
+	else if(NR==6) print "otimes.dat                     c: File containing source-receiver associations";
+	else if(NR==8) print thp "    " php "                        c: Grid dicing in latitude and longitude";
+	else if(NR==9) print asgr "                              c: Apply source grid refinement? (0=no,1=yes)";
+	else if(NR==10) print dl "    " erg "                        c: Dicing level and extent of refined grid";
+	else if(NR==11) print er "                         c: Earth radius in km";
+	else if(NR==12) print fom "                              c: Use first-order(0) or mixed-order(1) scheme";
+	else if(NR==13) print nb "                            c: Narrow band size (0-1) as fraction of nnx*nnz";
+	else if(NR==17) print "0                              c: find source-receiver traveltimes (0=no,1=yes)";
+	else if(NR==18) print "rtravel.out                    c: Name of file containing source-receiver traveltimes";
+	else if(NR==19) print "0                              c: Calculate Frechet derivatives (0=no,1=yes)";
+	else if(NR==21) print "0                              c: Write traveltime field to file? (0=no,>0=source id)";
+	else print $0 }
+	' fm2dss.in > fm2dss1.in
+mv fm2dss1.in fm2dss.in
+
+if [[ ${updrays} != "2" ]] ; then
+	
+	# Create initial grid
+	if [[ ${NI} == "1" ]] ; then
+		# Create new grid2dss.in file with background velocity set to ${velavg}
+		awk -v Ydr=`echo ${Ydicingr}` -v Xdr=`echo ${Xdicingr}` -v NORTH=`echo ${north}` -v SOUTH=`echo ${south}` -v WEST=`echo ${west}` -v EAST=`echo ${east}` -v vela=`echo ${velavg}` '
+			{ if(NR==4) print "grid2d.vtx";
+			else if(NR==8) print Ydr "                    c: Number of grid points in theta (N-S)";
+			else if(NR==9) print Xdr "                    c: Number of grid points in phi (E-W)";
+			else if(NR==10) print NORTH "    " SOUTH "               c: N-S range of grid (degrees)";
+			else if(NR==11) print WEST "    " EAST "               c: W-E range of grid (degrees)";
+			else if(NR==15) print vela "                c: Background velocity";
+			else if(NR==19) print "0                     c: Add random structure (0=no,1=yes)";
+			else if(NR==25) print "0                     c: Add a priori model covariance (0=no,1=yes)?";
+			else if(NR==26) print 0.3 "                   c: Diagonal elements of covariance matrix";
+			else if(NR==30) print "0                     c: Add checkerboard (0=no,1=yes)";
+			else if(NR==37) print "0                     c: Apply spikes (0=no,1=yes)";
+			else print $0 }
+			' grid2dss.in > grid2dss1.in
+		mv grid2dss1.in grid2dss.in
+		./grid2dss
+		cp grid2d.vtx gridi.vtx
+	else
+		echo "Enter path and file name of average map from previous iteration:"
+		read prevavg
+		cp ${prevavg} gridi.vtx
+	fi
+	
+	# Set file containing velocity grid info to gridi.vtx and calculate initial raypaths (raypathi.out)
+	awk '
+		{ if(NR==7) print "gridi.vtx                      c: File containing velocity grid information";
+		else if(NR==23) print "-1                             c: Write out raypaths (<0=all,0=no,>0=source id)";
+		else if(NR==24) print "raypathi.out                   c: Name of file containing raypath geometry";
+		else print $0 }
+		' fm2dss.in > fm2dss1.in
+	mv fm2dss1.in fm2dss.in
+	
+# Perform forward modelling with initial velocity grid and output initial raypaths raypathi.out
+echo Modelling initial velocity grid and raypaths...
+	jobname=fm2dss
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+fi	
+##########************************************************************************************************************##########
+########## --------------------------------------------- FINAL RAYPATHS --------------------------------------------- ##########
+if [[ ${updrays} == "0" ]] ; then psxy
+	# The final raypaths are the same as the initial raypaths
+	cp raypathi.out raypathc.out
+fi
+
+# Set file containing velocity grid info to Average.out and calculate raypaths for the average model (raypatha.out)
+awk -v avgf=`echo ${avgfile}` '
+	{ if(NR==7) print avgf "                         c: File containing velocity grid information";
+	else if(NR==17) print "1                              c: find source-receiver traveltimes (0=no,1=yes)";
+	else if(NR==18) print "rtravela.out                   c: Name of file containing source-receiver traveltimes";
+	else if(NR==23) print "-1                             c: Write out raypaths (<0=all,0=no,>0=source id)";
+	else if(NR==24) print "raypatha.out                   c: Name of file containing raypath geometry";
+	else print $0 }
+	' fm2dss.in > fm2dss1.in
+mv fm2dss1.in fm2dss.in
+# Perform forward modelling with average velocity grid to calculate raypaths used for the average model
+echo "----------> Calculating raypaths and traveltimes used for the average model..."
+	jobname=fm2dss
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+		' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+##########************************************************************************************************************##########
+
+cd ${plot_dir}
+rm *.ps *.eps
+
+# Set parameters for gmt (here we are plotting two maps side by side)
+gmtset PLOT_DEGREE_FORMAT = ddd MEASURE_UNIT = cm BASEMAP_TYPE = plain BASEMAP_AXES = WeSn ANNOT_FONT_SIZE = 10 LABEL_FONT_SIZE = 10 LABEL_OFFSET = 0.2c PAGE_ORIENTATION portrait PAPER_MEDIA = Custom_25cx30c X_AXIS_LENGTH = 41 Y_AXIS_LENGTH = 65
+psfile=plot.ps		# Name of ps file
+pngfile=plot.png	# Name of png file
+proj=-JM357/54.5/8					# Type of projection
+# Set colour palette boundaries
+up=`echo ${velavg} + ${theta} | bc -l`			
+down=`echo ${velavg} - ${theta} | bc -l`
+inc=`echo "${up} ${down}" | awk '{printf "%.2f",($1-$2)/4}'`;
+# Create colour palette
+makecpt -Cpolar -T${down}/${up}/0.0001 -I -Z > ${plot_dir}/palette.cpt
+
+for nproc in $(seq 1 1 ${proc}) ; do
+	echo First and last models for chain ${nproc} of ${proc}
+##########************************************************************************************************************##########
+########## -------------------------------------------- INITIAL RAYPATHS -------------------------------------------- ##########
+	if [[ ${updrays} == "2" ]] ; then
+		cd ${bin_dir}
+		# Set file containing velocity grid info to First.vtx and calculate initial raypaths (raypathi.out)
+		awk -v np=`echo ${nproc}` -v ff=`echo ${firstfile}` '
+		{ if(NR==7) print ff "_p" np ".vtx                      c: File containing velocity grid information";
+		else if(NR==23) print "-1                             c: Write out raypaths (<0=all,0=no,>0=source id)";
+		else if(NR==24) print "raypathi.out                   c: Name of file containing raypath geometry";
+		else print $0 }
+		' fm2dss.in > fm2dss1.in
+		mv fm2dss1.in fm2dss.in
+			# Model raypaths
+			jobname=fm2dss
+			awk -v jname=`echo ${jobname}` '
+				{ if(NR==4) print "#$ -N " jname ;
+				else if(NR==6) print "#$ -l h_rt=00:20:00";
+				else if(NR==16) print "./" jname ;
+				else print $0 }
+				' jobsub.sh > jobsub1.sh
+			mv jobsub1.sh jobsub.sh
+			
+			./${jobname}
+# 			qsub jobsub.sh > sub.txt
+# 			more sub.txt
+# 			jobn=`awk '{print $3}' sub.txt`
+# 			echo ${jobname} job number is ${jobn}
+# 			done=0
+# 			while [[ ${done} == "0" ]] ; do
+# 				sleep ${sleeptime2}
+# 				done=`checkjob ${jobn}`
+# 			done
+# 			mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	fi
+##########************************************************************************************************************##########
+########## --------------------------------------------- FINAL RAYPATHS --------------------------------------------- ##########
+	if [[ ${updrays} == "2" ]] ; then
+		cd ${bin_dir}
+		# Set file containing velocity grid info to Last.vtx and calculate final raypaths (raypathc.out)
+		awk -v np=`echo ${nproc}` -v lf=`echo ${lastfile}` '
+		{ if(NR==7) print lf "_p" np ".vtx                       c: File containing velocity grid information";
+		else if(NR==23) print "-1                             c: Write out raypaths (<0=all,0=no,>0=source id)";
+		else if(NR==24) print "raypathc.out                   c: Name of file containing raypath geometry";
+		else print $0 }
+		' fm2dss.in > fm2dss1.in
+		mv fm2dss1.in fm2dss.in
+			# Model raypaths
+			jobname=fm2dss
+			awk -v jname=`echo ${jobname}` '
+				{ if(NR==4) print "#$ -N " jname ;
+				else if(NR==6) print "#$ -l h_rt=00:20:00";
+				else if(NR==16) print "./" jname ;
+				else print $0 }
+				' jobsub.sh > jobsub1.sh
+			mv jobsub1.sh jobsub.sh
+			
+			./${jobname}
+# 			qsub jobsub.sh > sub.txt
+# 			more sub.txt
+# 			jobn=`awk '{print $3}' sub.txt`
+# 			echo ${jobname} job number is ${jobn}
+# 			done=0
+# 			while [[ ${done} == "0" ]] ; do
+# 				sleep ${sleeptime2}
+# 				done=`checkjob ${jobn}`
+# 			done
+# 			mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	elif [[ ${updrays} == "1" ]] ; then
+		cd ${bin_dir}
+		# Set file containing velocity grid info to Update.vtx and calculate final raypaths (raypathc.out)
+		awk -v np=`echo ${nproc}` -v uf=`echo ${updfile}` '
+		{ if(NR==7) print uf "_p" np ".vtx                       c: File containing velocity grid information";
+		else if(NR==23) print "-1                             c: Write out raypaths (<0=all,0=no,>0=source id)";
+		else if(NR==24) print "raypathc.out                   c: Name of file containing raypath geometry";
+		else print $0 }
+		' fm2dss.in > fm2dss1.in
+		mv fm2dss1.in fm2dss.in
+			# Model raypaths
+			jobname=fm2dss
+			awk -v jname=`echo ${jobname}` '
+				{ if(NR==4) print "#$ -N " jname ;
+				else if(NR==6) print "#$ -l h_rt=00:20:00";
+				else if(NR==16) print "./" jname ;
+				else print $0 }
+				' jobsub.sh > jobsub1.sh
+			mv jobsub1.sh jobsub.sh
+			
+			./${jobname}
+# 			qsub jobsub.sh > sub.txt
+# 			more sub.txt
+# 			jobn=`awk '{print $3}' sub.txt`
+# 			echo ${jobname} job number is ${jobn}
+# 			done=0
+# 			while [[ ${done} == "0" ]] ; do
+# 				sleep ${sleeptime2}
+# 				done=`checkjob ${jobn}`
+# 			done
+# 			mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	fi
+##########************************************************************************************************************##########
+	# Set values in tslicess.in - plot initial raypaths
+	cd ${plot_dir}
+	awk -v ths=`echo ${slthv}` -v phs=`echo ${slphv}` -v np=`echo ${nproc}` -v ff=`echo ${firstfile}` '
+		{ if(NR==4) print "../" ff "_p" np ".vtx                  c: True model velocity vertices";
+		else if(NR==5) print "../" ff "_p" np ".vtx                  c: Reference model velocity vertices";
+		else if(NR==6) print "../travelt.out                c: Traveltime field";
+		else if(NR==7) print "../raypathi.out               c: Raypaths";
+		else if(NR==11) print "bound.gmt                     c: GMT plotting bounds for depth slice";
+		else if(NR==15) print "1                             c: Plots sources? (0=no,1=yes)";
+		else if(NR==16) print "../sources.dat                c: Source input file";
+		else if(NR==17) print "sources.dat                   c: Source output file";
+		else if(NR==18) print "1                             c: Plot receivers? (0=no,1=yes)";
+		else if(NR==19) print "../receivers.dat              c: Receiver input file";
+		else if(NR==20) print "receivers.dat                 c: Receiver output file";
+		else if(NR==24) print "0                             c: Plot velocity slice? (0=no,1=yes)";
+		else if(NR==25) print "0                             c: Absolute (0) or relative (1) velocity";
+		else if(NR==26) print ths "    " phs "                       c: Dicing in theta,phi";
+		else if(NR==27) print "grid2dv.z                     c: GMT output file for velocity slice";
+		else if(NR==31) print "0                             c: Plot traveltime slice? (0=no,1=yes)";
+		else if(NR==36) print "1                             c: Plot raypaths? (0=no,1=yes)";
+		else if(NR==37) print "raysi.dat                     c: Output ray path file for depth slice";
+		else print $0 }
+		' tslicess.in > tslicess1.in
+	mv tslicess1.in tslicess.in
+	# Execute tsclicess
+		jobname=tslicess
+		awk -v jname=`echo ${jobname}` '
+			{ if(NR==4) print "#$ -N " jname ;
+			else if(NR==6) print "#$ -l h_rt=00:20:00";
+			else if(NR==16) print "./" jname ;
+			else print $0 }
+		  ' jobsub.sh > jobsub1.sh
+		mv jobsub1.sh jobsub.sh
+		
+		./${jobname}
+# 		qsub jobsub.sh > sub.txt
+# 		more sub.txt
+# 		jobn=`awk '{print $3}' sub.txt`
+# 		echo ${jobname} job number is ${jobn}
+# 		done=0
+# 		while [[ ${done} == "0" ]] ; do
+# 			sleep ${sleeptime2}
+# 			done=`checkjob ${jobn}`
+# 		done
+# 		mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	
+	# Set values in tslicess.in - plot final raypaths
+	awk -v ths=`echo ${slthv}` -v phs=`echo ${slphv}` -v np=`echo ${nproc}` -v lf=`echo ${lastfile}` '
+		{ if(NR==4) print "../" lf "_p" np ".vtx                     c: True model velocity vertices";
+		else if(NR==5) print "../" lf "_p" np ".vtx                     c: Reference model velocity vertices";
+		else if(NR==7) print "../raypathc.out               c: Raypaths";
+		else if(NR==36) print "1                             c: Plot raypaths? (0=no,1=yes)";
+		else if(NR==37) print "raysc.dat                     c: Output ray path file for depth slice";
+		else print $0 }
+		' tslicess.in > tslicess1.in
+	mv tslicess1.in tslicess.in
+	# Execute tsclicess
+		jobname=tslicess
+		awk -v jname=`echo ${jobname}` '
+			{ if(NR==4) print "#$ -N " jname ;
+			else if(NR==6) print "#$ -l h_rt=00:20:00";
+			else if(NR==16) print "./" jname ;
+			else print $0 }
+		  ' jobsub.sh > jobsub1.sh
+		mv jobsub1.sh jobsub.sh
+		
+		./${jobname}
+# 		qsub jobsub.sh > sub.txt
+# 		more sub.txt
+# 		jobn=`awk '{print $3}' sub.txt`
+# 		echo ${jobname} job number is ${jobn}
+# 		done=0
+# 		while [[ ${done} == "0" ]] ; do
+# 			sleep ${sleeptime2}
+# 			done=`checkjob ${jobn}`
+# 		done
+# 		mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	
+	# Set values in voroslice.in - plot initial velocity model
+	awk -v ths=`echo ${slthv}` -v phs=`echo ${slphv}` -v ncmax=`echo ${ncell_max}` -v ntmax=`echo ${nt_max}` -v nvmax=`echo ${nv_max}` -v np=`echo ${nproc}` -v ff=`echo ${firstfile}` '
+		{ if(NR==4) print "../" ff "_p" np ".vor                    c: Voronoi cell nodes";
+		else if(NR==8) print "bound.gmt                     c: GMT plotting bounds for depth slice";
+		else if(NR==12) print ths "    " phs "                       c: Dicing in theta,phi";
+		else if(NR==13) print "grid2dvi.z                     c: GMT output file for velocity slice";
+		else if(NR==17) print ncmax "                             c: ncell_max";
+		else if(NR==18) print ntmax "                           c: nt_max";
+		else if(NR==19) print nvmax "                           c: nv_max";
+		else print $0 }
+		' voroslice.in > voroslice1.in
+	mv voroslice1.in voroslice.in
+	# Execute voroslice
+		jobname=voroslice
+		awk -v jname=`echo ${jobname}` '
+			{ if(NR==4) print "#$ -N " jname ;
+			else if(NR==6) print "#$ -l h_rt=00:20:00";
+			else if(NR==16) print "./" jname ;
+			else print $0 }
+		  ' jobsub.sh > jobsub1.sh
+		mv jobsub1.sh jobsub.sh
+		
+		./${jobname}
+# 		qsub jobsub.sh > sub.txt
+# 		more sub.txt
+# 		jobn=`awk '{print $3}' sub.txt`
+# 		echo ${jobname} job number is ${jobn}
+# 		done=0
+# 		while [[ ${done} == "0" ]] ; do
+# 			sleep ${sleeptime2}
+# 			done=`checkjob ${jobn}`
+# 		done
+# 		mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	
+	# Set values in voroslice.in - plot final velocity model
+	awk  -v np=`echo ${nproc}` -v lf=`echo ${lastfile}` '
+		{ if(NR==4) print "../" lf "_p" np ".vor                     c: Voronoi cell nodes";
+		else if(NR==13) print "grid2dvc.z                     c: GMT output file for velocity slice";
+		else print $0 }
+		' voroslice.in > voroslice1.in
+	mv voroslice1.in voroslice.in
+	# Execute voroslice
+		jobname=voroslice
+		awk -v jname=`echo ${jobname}` '
+			{ if(NR==4) print "#$ -N " jname ;
+			else if(NR==6) print "#$ -l h_rt=00:20:00";
+			else if(NR==16) print "./" jname ;
+			else print $0 }
+		  ' jobsub.sh > jobsub1.sh
+		mv jobsub1.sh jobsub.sh
+		
+		./${jobname}
+# 		qsub jobsub.sh > sub.txt
+# 		more sub.txt
+# 		jobn=`awk '{print $3}' sub.txt`
+# 		echo ${jobname} job number is ${jobn}
+# 		done=0
+# 		while [[ ${done} == "0" ]] ; do
+# 			sleep ${sleeptime2}
+# 			done=`checkjob ${jobn}`
+# 		done
+# 		mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+	
+	longW=`awk 'NR==1 {printf "%.2f",$1}' bound.gmt`	# Boundary coords from bounds.gmt
+	longE=`awk 'NR==2 {printf "%.2f",$1}' bound.gmt`
+	latS=`awk 'NR==3 {printf "%.2f",$1}' bound.gmt`
+	latN=`awk 'NR==4 {printf "%.2f",$1}' bound.gmt`
+	xunit=`awk 'NR==5 {print $1}' bound.gmt`		# Gridding units
+	yunit=`awk 'NR==6 {print $1}' bound.gmt`
+	bounds=-R${longW}/${longE}/${latS}/${latN}		# Projection boundaries
+	
+	xyz2grd grid2dvi.z -Ggrid2dvi.grd -I${xunit}/${yunit} -ZLB ${bounds}
+	rm grid2dvi.z	# Remove text grid file (because it's huge!)
+	xyz2grd grid2dvc.z -Ggrid2dvc.grd -I${xunit}/${yunit} -ZLB ${bounds}
+	rm grid2dvc.z	# Remove text grid file (because it's huge!)
+	
+	# Plot initial model and initial raypaths
+	echo "----------> Plotting initial model and initial raypaths..."
+	grdimage grid2dvi.grd ${bounds} ${proj} -Cpalette.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+	pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+	psxy raysi.dat ${bounds} ${proj} -W1 -m -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+	psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+	# Plot final model and last used raypaths raypaths
+	echo "----------> Plotting final model and last used raypaths..."
+	grdimage grid2dvc.grd ${bounds} ${proj} -Cpalette.cpt -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+	pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+	psxy raysc.dat ${bounds} ${proj} -W1 -m -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+	psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+	# Plot color scale
+	psscale -Cpalette.cpt -Ba${inc}f${inc}:"Group velocity (km/s)": -D10/2/8/0.4h -O -P >> ${psfile}
+	# Convert ps to png and move file
+	ps2raster ${psfile} -A -Tg -E300
+	mv ${pngfile} ${folderm}/${iterpng}_p${nproc}.png
+	
+done
+
+# # Plot initial and final position of Voronoi centres - p1
+# echo "----------> Plotting initial and final position of Voronoi centres - p1..."
+# pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -K -P -Xa1 -Ya3.4 > ${psfile}
+# #awk '{ if(NR>5) print $1,$2 }' ../${firstfile}_p1.vor | psxy ${bounds} ${proj} -: -Sc0.1 -Gdarkgreen -W1,darkgreen -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# awk '{ if(NR>5) print $1,$2 }' ../${firstfile}_p1.vor | psxy ${bounds} ${proj} -: -Sp -Gdarkgreen -W1,darkgreen -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# #awk '{ if(NR>5) print $1,$2 }' ../${lastfile}_p1.vor | psxy ${bounds} ${proj} -: -Sc0.1 -Gdarkgreen -W1,darkgreen -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# awk '{ if(NR>5) print $1,$2 }' ../${lastfile}_p1.vor | psxy ${bounds} ${proj} -: -Sp -Gdarkgreen -W1,darkgreen -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -P -Xa11 -Ya3.4 >> ${psfile}
+# # Convert ps to png and move file
+# ps2raster ${psfile} -A -Tg -E300
+# mv ${pngfile} ${folderm}/${ptspng}
+# 
+# # Plot initial and final position of Voronoi centres - all
+# echo "----------> Plotting initial and final position of Voronoi centres - all..."
+# pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -K -P -Xa1 -Ya3.4 > ${psfile}
+# #awk '{ if($2!="") print $1,$2 }' ../${vorofile}.ini | psxy ${bounds} ${proj} -: -Sc0.1 -Gdarkgreen -W1,darkgreen -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# awk '{ if($2!="") print $1,$2 }' ../${vorofile}.ini | psxy ${bounds} ${proj} -: -Sp -Gdarkgreen -W1,darkgreen -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# #awk '{ if($2!="") print $1,$2 }' ../${vorofile}.fin | psxy ${bounds} ${proj} -: -Sc0.1 -Gdarkgreen -W1,darkgreen -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# awk '{ if($2!="") print $1,$2 }' ../${vorofile}.fin | psxy ${bounds} ${proj} -: -Sp -Gdarkgreen -W1,darkgreen -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -P -Xa11 -Ya3.4 >> ${psfile}
+# # Convert ps to png and move file
+# ps2raster ${psfile} -A -Tg -E300
+# mv ${pngfile} ${folderm}/${ptsallpng}
+
+# Plot Voronoi centre density for first and last model
+awk -v ths=`echo ${slth}` -v phs=`echo ${slph}` -v nf=`echo ${nodefile}` '
+	{ if(NR==4) print "../" nf ".ini                       c: True model velocity vertices";
+	else if(NR==5) print "../" nf ".ini                       c: Reference model velocity vertices";
+	else if(NR==6) print "../travelt.out                c: Traveltime field";
+	else if(NR==7) print "../raypatha.out               c: Raypaths";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==25) print "0                             c: Absolute (0) or relative (1) velocity";
+	else if(NR==26) print ths "    " phs "                       c: Dicing in theta,phi";
+	else if(NR==27) print "node2dvi.z                     c: GMT output file for velocity slice";
+	else if(NR==31) print "0                             c: Plot traveltime slice? (0=no,1=yes)";
+	else if(NR==36) print "0                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "raysa.dat                     c: Output ray path file for depth slice";
+	else print $0 }
+	' tslicess.in > tslicess1.in
+mv tslicess1.in tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+awk -v ths=`echo ${slth}` -v phs=`echo ${slph}` -v nf=`echo ${nodefile}` '
+	{ if(NR==4) print "../" nf ".fin                       c: True model velocity vertices";
+	else if(NR==5) print "../" nf ".fin                       c: Reference model velocity vertices";
+	else if(NR==6) print "../travelt.out                c: Traveltime field";
+	else if(NR==7) print "../raypatha.out               c: Raypaths";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==25) print "0                             c: Absolute (0) or relative (1) velocity";
+	else if(NR==26) print ths "    " phs "                       c: Dicing in theta,phi";
+	else if(NR==27) print "node2dvf.z                     c: GMT output file for velocity slice";
+	else if(NR==31) print "0                             c: Plot traveltime slice? (0=no,1=yes)";
+	else if(NR==36) print "0                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "raysa.dat                     c: Output ray path file for depth slice";
+	else print $0 }
+	' tslicess.in > tslicess1.in
+mv tslicess1.in tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+maxi=`awk 'max=="" || $1 > max {max=$1} END {printf "%.4f",max}' node2dvi.z`
+maxf=`awk 'max=="" || $1 > max {max=$1} END {printf "%.4f",max}' node2dvf.z`
+echo ${maxi} > tmp.txt
+echo ${maxf} >> tmp.txt
+maxden=`awk 'max=="" || $1 > max {max=$1} END {printf "%.4f",max}' tmp.txt`
+incd=`echo "${maxden}" | awk '{printf "%.4f",($1)/4}'`
+xunit=`awk 'NR==5 {print $1}' bound.gmt`		# Gridding units
+yunit=`awk 'NR==6 {print $1}' bound.gmt`
+xyz2grd node2dvi.z -Gnode2dvi.grd -I${xunit}/${yunit} -ZLB ${bounds}
+xyz2grd node2dvf.z -Gnode2dvf.grd -I${xunit}/${yunit} -ZLB ${bounds}
+rm node2dvi.z node2dvf.z tmp.txt	# Remove text grid file (because it's huge!)
+makecpt -Chot -T0/${maxden}/0.0001 -Z -I > ${plot_dir}/palette3.cpt
+# Plot initial Voronoi centre density
+echo "----------> Plotting initial Voronoi centre density..."
+grdimage node2dvi.grd ${bounds} ${proj} -Cpalette3.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot final final Voronoi centre density
+echo "----------> Plotting final Voronoi centre density..."
+grdimage node2dvf.grd ${bounds} ${proj} -Cpalette3.cpt -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette3.cpt -Ba${incd}f${incd}:"Node density (nodes per pixel)": -D10/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${nodeflpng}
+
+#exit
+
+# Set values in tslicess.in - plot average model and raypaths
+awk -v ths=`echo ${slth}` -v phs=`echo ${slph}` -v avgf=`echo ${avgfile}` '
+	{ if(NR==4) print "../" avgf "                  c: True model velocity vertices";
+	else if(NR==5) print "../" avgf "                  c: Reference model velocity vertices";
+	else if(NR==6) print "../travelt.out                c: Traveltime field";
+	else if(NR==7) print "../raypatha.out               c: Raypaths";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==25) print "0                             c: Absolute (0) or relative (1) velocity";
+	else if(NR==26) print ths "    " phs "                       c: Dicing in theta,phi";
+	else if(NR==27) print "grid2dva.z                     c: GMT output file for velocity slice";
+	else if(NR==31) print "0                             c: Plot traveltime slice? (0=no,1=yes)";
+	else if(NR==36) print "1                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "raysa.dat                     c: Output ray path file for depth slice";
+	else print $0 }
+	' tslicess.in > tslicess1.in
+mv tslicess1.in tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+xunit=`awk 'NR==5 {print $1}' bound.gmt`		# Gridding units
+yunit=`awk 'NR==6 {print $1}' bound.gmt`
+xyz2grd grid2dva.z -Ggrid2dva.grd -I${xunit}/${yunit} -ZLB ${bounds}
+rm grid2dva.z	# Remove text grid file (because it's huge!)
+
+# Set values in resplotss.in
+awk '
+	{ if(NR==5) print "1                                 c: Plot initial (0) or final (1) residuals";
+	else if(NR==6) print "histo.dat                         c: Output file with histogram data";
+	else if(NR==7) print "0                                 c: Print residuals greater than this value";
+	else if(NR==12) print "../rtravela.out                   c: File containing model traveltimes";
+	else print $0 }
+	' ${plot_dir}/resplotss.in > ${plot_dir}/resplotss1.in
+mv ${plot_dir}/resplotss1.in ${plot_dir}/resplotss.in
+
+# Execute resplotss to get residuals - they are stored in file histo.dat and used to calculate the RMSw
+echo "----------> Calculating residuals..."
+cp ${bin_dir}/rtravela.out ${bin_dir}/itimes.dat
+./resplotss > resplotss.txt
+rm resplotss.txt
+cp histo.dat ${bin_dir}/${resfile}
+
+# Now plot average, maximum, median and error velocity map
+# Change paper size in gmtdefaults
+gmtset PAPER_MEDIA = Custom_15cx30c
+
+# We already have the average slice, so plot it!
+echo "----------> Plotting average velocity model..."
+grdimage grid2dva.grd ${bounds} ${proj} -Cpalette.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+#pstext text.txt ${bounds} ${proj} -Gblack -Wwhite -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette.cpt -Ba${inc}f${inc}:"Group velocity (km/s)": -D5/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${mappng}
+
+echo "----------> Plotting average velocity model and raypaths..."
+grdimage grid2dva.grd ${bounds} ${proj} -Cpalette.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy raysa.dat ${bounds} ${proj} -W1 -m -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+#pstext text.txt ${bounds} ${proj} -Gblack -Wwhite -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette.cpt -Ba${inc}f${inc}:"Group velocity (km/s)": -D5/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${pathspng}
+
+# Plot Voronoi centre density for ensemble of models
+gmtset PAPER_MEDIA = Custom_25cx30c
+awk -v ths=`echo ${slth}` -v phs=`echo ${slph}` -v nf=`echo ${nodefile}` '
+	{ if(NR==4) print "../" nf ".ens                       c: True model velocity vertices";
+	else if(NR==5) print "../" nf ".ens                       c: Reference model velocity vertices";
+	else if(NR==6) print "../travelt.out                c: Traveltime field";
+	else if(NR==7) print "../raypatha.out               c: Raypaths";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==25) print "0                             c: Absolute (0) or relative (1) velocity";
+	else if(NR==26) print ths "    " phs "                       c: Dicing in theta,phi";
+	else if(NR==27) print "node2dve.z                     c: GMT output file for velocity slice";
+	else if(NR==31) print "0                             c: Plot traveltime slice? (0=no,1=yes)";
+	else if(NR==36) print "0                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "raysa.dat                     c: Output ray path file for depth slice";
+	else print $0 }
+	' tslicess.in > tslicess1.in
+mv tslicess1.in tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+maxden=`awk 'max=="" || $1 > max {max=$1} END {printf "%.4f",max}' node2dve.z`
+incd=`echo "${maxden}" | awk '{printf "%.4f",($1)/4}'`
+xunit=`awk 'NR==5 {print $1}' bound.gmt`		# Gridding units
+yunit=`awk 'NR==6 {print $1}' bound.gmt`
+xyz2grd node2dve.z -Gnode2dve.grd -I${xunit}/${yunit} -ZLB ${bounds}
+rm node2dve.z	# Remove text grid file (because it's huge!)
+makecpt -Chot -T0/${maxden}/0.0001 -Z -I > ${plot_dir}/palette3.cpt
+# Plot ensemble Voronoi centre density
+echo "----------> Plotting ensemble Voronoi centre density..."
+grdimage node2dve.grd ${bounds} ${proj} -Cpalette3.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot ensemble Voronoi centre density and average raypaths
+echo "----------> Plotting ensemble Voronoi centre density and average raypaths..."
+grdimage node2dve.grd ${bounds} ${proj} -Cpalette3.cpt -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+if  [[ ${updrays} == "0" ]] ; then
+	psxy raysi.dat ${bounds} ${proj} -W1 -m -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+else
+	psxy raysa.dat ${bounds} ${proj} -W1 -m -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+fi
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa11 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette3.cpt -Ba${incd}f${incd}:"Node density (nodes per pixel)": -D10/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${nodepng}
+
+
+# Get maximum velocity slice and plot it
+gmtset PAPER_MEDIA = Custom_15cx30c
+cp ${bin_dir}/${maxfile} ${bin_dir}/gridc.vtx
+# Set values in tslicess.in - plot velocity field and don't plot raypaths
+awk '
+	{ if(NR==4) print "../gridc.vtx                  c: True model velocity vertices";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==27) print "grid2dv.z                     c: GMT output file for velocity slice";
+	else if(NR==36) print "0                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "rays.dat                      c: Output ray path file for depth slice";
+	else print $0 }
+	' ${plot_dir}/tslicess.in > ${plot_dir}/tslicess1.in
+mv ${plot_dir}/tslicess1.in ${plot_dir}/tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+xyz2grd grid2dv.z -Ggrid2dvc.grd -I${xunit}/${yunit} -ZLB ${bounds}
+rm grid2dv.z	# Remove text grid file (because it's huge!)
+# Plot
+echo "----------> Plotting maximum velocity model..."
+grdimage grid2dvc.grd ${bounds} ${proj} -Cpalette.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette.cpt -Ba${inc}f${inc}:"Group velocity (km/s)": -D5/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300 #-C-sDEVICE=png16m -C-dGraphicsAlphaBits=4 -C-dSAFER -C-dBATCH -C-dNOPAUSE
+mv ${pngfile} ${folderm}/${maxpng}
+
+
+# Get median velocity slice and plot it
+cp ${bin_dir}/${medfile} ${bin_dir}/gridc.vtx
+# Set values in tslicess.in - plot velocity field and don't plot raypaths
+awk '
+	{ if(NR==4) print "../gridc.vtx                  c: True model velocity vertices";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==27) print "grid2dv.z                     c: GMT output file for velocity slice";
+	else if(NR==36) print "0                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "rays.dat                      c: Output ray path file for depth slice";
+	else print $0 }
+	' ${plot_dir}/tslicess.in > ${plot_dir}/tslicess1.in
+mv ${plot_dir}/tslicess1.in ${plot_dir}/tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+xyz2grd grid2dv.z -Ggrid2dvc.grd -I${xunit}/${yunit} -ZLB ${bounds}
+rm grid2dv.z	# Remove text grid file (because it's huge!)
+# Plot
+echo "----------> Plotting median velocity model..."
+grdimage grid2dvc.grd ${bounds} ${proj} -Cpalette.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette.cpt -Ba${inc}f${inc}:"Group velocity (km/s)": -D5/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300 #-C-sDEVICE=png16m -C-dGraphicsAlphaBits=4 -C-dSAFER -C-dBATCH -C-dNOPAUSE
+mv ${pngfile} ${folderm}/${medpng}
+
+
+# Plot error (from Stdev.out)
+cp ${bin_dir}/${errfile} ${bin_dir}/gridc.vtx
+# Set values in tslicess.in - plot velocity field and don't plot raypaths
+awk '
+	{ if(NR==4) print "../gridc.vtx                  c: True model velocity vertices";
+	else if(NR==24) print "1                             c: Plot velocity slice? (0=no,1=yes)";
+	else if(NR==27) print "grid2dv.z                     c: GMT output file for velocity slice";
+	else if(NR==36) print "0                             c: Plot raypaths? (0=no,1=yes)";
+	else if(NR==37) print "rays.dat                      c: Output ray path file for depth slice";
+	else print $0 }
+	' ${plot_dir}/tslicess.in > ${plot_dir}/tslicess1.in
+mv ${plot_dir}/tslicess1.in ${plot_dir}/tslicess.in
+# Execute tsclicess
+	jobname=tslicess
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==6) print "#$ -l h_rt=00:20:00";
+		else if(NR==16) print "./" jname ;
+		else print $0 }
+	  ' jobsub.sh > jobsub1.sh
+	mv jobsub1.sh jobsub.sh
+	
+	./${jobname}
+# 	qsub jobsub.sh > sub.txt
+# 	more sub.txt
+# 	jobn=`awk '{print $3}' sub.txt`
+# 	echo ${jobname} job number is ${jobn}
+# 	done=0
+# 	while [[ ${done} == "0" ]] ; do
+# 		sleep ${sleeptime2}
+# 		done=`checkjob ${jobn}`
+# 	done
+# 	mv ${jobname}.?${jobn} ${bin_dir}/${tomotime}
+xyz2grd grid2dv.z -Ggrid2dvc.grd -I${xunit}/${yunit} -ZLB ${bounds}
+grep -v "NaN" grid2dv.z > tmp.z
+# Make new color palette
+# Set colour palette boundaries
+up2=`awk 'max=="" || $1 > max {max=$1} END {printf "%.4f",max}' tmp.z`			
+down2=`awk 'min=="" || $1 < min {min=$1} END {printf "%.4f",min}' tmp.z`
+rm tmp.z
+inc2=`echo "${up2} ${down2}" | awk '{printf "%.2f",($1-$2)/4}'`
+#echo $up2 $down2
+# Create colour palette
+makecpt -Cjet -T${down2}/${up2}/0.0001 -Z > ${plot_dir}/palette2.cpt
+rm grid2dv.z	# Remove text grid file (because it's huge!)
+# Plot
+echo "----------> Plotting error..."
+grdimage grid2dvc.grd ${bounds} ${proj} -Q -Cpalette2.cpt -K -P -Xa1 -Ya3.4 > ${psfile}
+pscoast ${bounds} ${proj} -W2.5 -A2 -Ba5f1/a5f1 -Dh -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+psxy receivers.dat ${bounds} ${proj} -: -St0.2 -Gwhite -W2 -O -K -P -Xa1 -Ya3.4 >> ${psfile}
+# Plot color scale
+psscale -Cpalette2.cpt -Ba${inc2}f${inc2}:"Error in group velocity (km/s)": -D5/2/8/0.4h -O -P >> ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${errpng}
+
+
+# Plot residuals histogram
+echo "----------> Plotting residuals..."
+xmin=`awk 'min=="" || $1 < min {min=$1} END {printf "%.4f",min}' histo.dat`
+xmax=`awk 'max=="" || $1 > max {max=$1} END {printf "%.4f",max}' histo.dat`
+echo ${xmin} | awk '{ if($1>0) print $1; else print -1*$1}' > tmp.txt
+echo ${xmax} | awk '{ if($1>0) print $1; else print -1*$1}' >> tmp.txt
+xmax=`awk 'max=="" || $1 > max {max=$1} END {printf "%d",max+1}' tmp.txt`
+inc5=`echo "${xmax}" | awk '{printf "%d",($1)/4}'`
+inc6=`echo "${inc5}" | awk '{printf "%d",($1)/2}'`
+xmin=-${xmax}
+binh=-W1 	# Bin width
+pshistogram histo.dat ${binh} -F -Io > tmp.txt
+ymax=`awk 'max=="" || $2 > max {max=$2} END {print max}' tmp.txt`
+inc3=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+inc4=`echo "${inc3}" | awk '{printf "%.2f",($1)/2}'`
+rm tmp.txt
+boundsh=-R${xmin}/${xmax}/0/${ymax}
+projh=-JX8/12
+pshistogram histo.dat -Ba${inc5}f${inc6}:"Travel time residual (s)":/a${inc3}f${inc4}:"Number of rays": ${boundsh} ${projh} -Ggrey40 ${binh} -F -P -Xa2 -Ya2.5 > ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${residualspng}
+
+
+# Plot histogram of number of cells
+echo "----------> Plotting posterior probability density of number of cells..."
+totsamp=`awk '{sum+=$2} END {printf "%d",sum}' ${bin_dir}/${evidfile}`
+# Change paper size in gmtdefaults
+gmtset PAPER_MEDIA = Custom_25cx30c
+if [[ ${normprob} == "1" ]] ; then
+	ymax=`awk 'max=="" || $2/'${totsamp}' > max {max=$2/'${totsamp}'} END {print max}' ${bin_dir}/${evidfile}`
+	inc3y=1
+	inc4y=1
+elif [[ ${normprob} == "0" ]] ; then
+	ymax=`awk 'max=="" || $2 > max {max=$2} END {print max}' ${bin_dir}/${evidfile}`
+	inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+	inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+fi
+inc3x=`echo "${ncell_max}" 0 | awk '{printf "%d",($1-$2)/4}'`
+inc4x=`echo "${inc3x}" | awk '{printf "%.2f",($1)/2}'`
+boundsh=-R${ncell_min}/${ncell_max}/0/${ymax}
+projh=-JX8/12
+#pshistogram ${bin_dir}/${ncelifile} -B:"Number of cells":/:"Number of samples": ${boundsh} ${projh} -Ggrey40 ${binh} -F -P -Xa2 -Ya2.5 > ${psfile}
+if [[ ${normprob} == "1" ]] ; then
+	awk '{print $1,$2/'${totsamp}'}' ${bin_dir}/${evidfile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Number of cells":/:"p(n|d)": -Sb1u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+elif [[ ${normprob} == "0" ]] ; then
+	awk '{print $1,$2}' ${bin_dir}/${evidfile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Number of cells":/a${inc3y}f${inc4y}:"Number of samples": -Sb1u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+fi
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${cellspng}
+
+
+# Plot histogram of data noise
+if [[ ${usdn} == "4" ]] ; then
+	echo "----------> Plotting noise..."
+	awk '{for(i=2;i<=NF;i++){print $i}}' ${bin_dir}/${noisefile} > noise1.tmp
+	# Change paper size in gmtdefaults
+	gmtset PAPER_MEDIA = Custom_25cx30c
+	ymax=`awk 'max=="" || $1 > max {max=$1} END {print max}' noise1.tmp`
+	rm noise1.tmp
+	inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+	inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+	inc3x=`echo "${errtmax}" 0 | awk '{printf "%.6f",($1-$2)/4}'`
+	inc4x=`echo "${inc3x}" | awk '{printf "%.6f",($1)/2}'`
+	bw=`echo "${errtmax}" "${errtmin}" "${pixn}" | awk '{printf "%.6f",($1-$2)/$3}'`
+	boundsh=-R${errtmin}/${errtmax}/0/${ymax}
+	projh=-JX8/12
+	psxy ${bin_dir}/${noisefile} ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/a${inc3y}f${inc4y}:"Number of rays": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+	# Convert ps to png and move file
+	ps2raster ${psfile} -A -Tg -E300
+	mv ${pngfile} ${folderm}/${noisepng}
+elif [[ ${usdn} == "1" || ${usdn} == "2" ]] ; then
+	echo "----------> Plotting posterior probability density of noise parameter a..."
+	totsamp=`awk '{sum+=$2} END {printf "%d",sum}' ${bin_dir}/${noisefile}`
+	ncol=`echo ${ndset} + 1 | bc`
+	awk '{for(i=1;i<='${ncol}';i++){printf "%s ", $i}; printf "\n"}' ${bin_dir}/${noisefile} > noise.tmp
+	awk '{for(i=2;i<=NF;i++){print $i}}' noise.tmp > noise1.tmp
+	# Change paper size in gmtdefaults
+	gmtset PAPER_MEDIA = Custom_25cx30c
+	if [[ ${normprob} == "1" ]] ; then
+		ymax=`awk 'max=="" || $1/'${totsamp}' > max {max=$1/'${totsamp}'} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=1
+		inc4y=1
+	elif [[ ${normprob} == "0" ]] ; then
+		ymax=`awk 'max=="" || $1 > max {max=$1} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+		inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+	fi
+	inc3x=`echo "${aa_max}" 0 | awk '{printf "%.6f",($1-$2)/4}'`
+	inc4x=`echo "${inc3x}" | awk '{printf "%.6f",($1)/2}'`
+	bw=`echo "${aa_max}" "${aa_min}" "${pixn}" | awk '{printf "%.6f",($1-$2)/$3}'`
+	boundsh=-R${aa_min}/${aa_max}/0/${ymax}
+	projh=-JX8/12
+	for i in $(seq 1 1 ${ndset})  ; do
+		ii=`echo ${i} + 1 | bc`
+		if [[ ${ndset} == "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/:"p(a|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			elif [[ ${normprob} == "0" ]] ; then
+				awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			fi
+		elif [[ ${ndset} > "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/:"p(a|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/:"p(a|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/:"p(a|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			elif [[ ${normprob} == "0" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"a (s deg@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			fi
+		fi
+	done
+	# Convert ps to png and move file
+	ps2raster ${psfile} -A -Tg -E300
+	mv ${pngfile} ${folderm}/${noiseapng}
+
+	echo "----------> Plotting posterior probability density of noise parameter b..."
+	#totsamp=`awk '{sum+=$2} END {printf "%d",sum}' ${bin_dir}/${noisefile}`
+	ncol=`echo ${ncol} + 1 | bc`
+	awk '{for(i='${ncol}';i<=NF;i++){printf "%s ", $i}; printf "\n"}' ${bin_dir}/${noisefile} > noise.tmp
+	awk '{for(i=2;i<=NF;i++){print $i}}' noise.tmp > noise1.tmp
+	# Change paper size in gmtdefaults
+	gmtset PAPER_MEDIA = Custom_25cx30c
+	if [[ ${normprob} == "1" ]] ; then
+		ymax=`awk 'max=="" || $1/'${totsamp}' > max {max=$1/'${totsamp}'} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=1
+		inc4y=1
+	elif [[ ${normprob} == "0" ]] ; then
+		ymax=`awk 'max=="" || $1 > max {max=$1} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+		inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+	fi
+	inc3x=`echo "${bb_max}" 0 | awk '{printf "%.6f",($1-$2)/4}'`
+	inc4x=`echo "${inc3x}" | awk '{printf "%.6f",($1)/2}'`
+	bw=`echo "${bb_max}" "${bb_min}" "${pixn}" | awk '{printf "%.6f",($1-$2)/$3}'`
+	boundsh=-R${bb_min}/${bb_max}/0/${ymax}
+	projh=-JX8/12
+	for i in $(seq 1 1 ${ndset})  ; do
+		ii=`echo ${i} + 1 | bc`
+		if [[ ${ndset} == "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/:"p(b|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			elif [[ ${normprob} == "0" ]] ; then
+				awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			fi
+		elif [[ ${ndset} > "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/:"p(b|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/:"p(b|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'/'${totsamp}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/:"p(b|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			elif [[ ${normprob} == "0" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'}' noise.tmp | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"b (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			fi
+		fi
+	done
+	# Convert ps to png and move file
+	ps2raster ${psfile} -A -Tg -E300
+	mv ${pngfile} ${folderm}/${noisebpng}
+	rm noise.tmp
+elif [[ ${usdn} == "3" ]] ; then
+	echo "----------> Plotting posterior probability density of noise parameter lambda..."
+	totsamp=`awk '{sum+=$2} END {printf "%d",sum}' ${bin_dir}/${noisefile}`
+	ncol=`echo ${ndset} + 1 | bc`
+	awk '{for(i=2;i<=NF;i++){print $i}}' ${bin_dir}/${noisefile} > noise1.tmp
+	# Change paper size in gmtdefaults
+	gmtset PAPER_MEDIA = Custom_25cx30c
+	if [[ ${normprob} == "1" ]] ; then
+		ymax=`awk 'max=="" || $1/'${totsamp}' > max {max=$1/'${totsamp}'} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=1
+		inc4y=1
+	elif [[ ${normprob} == "0" ]] ; then
+		ymax=`awk 'max=="" || $1 > max {max=$1} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+		inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+	fi
+	inc3x=`echo "${lambda_max}" 0 | awk '{printf "%.6f",($1-$2)/4}'`
+	inc4x=`echo "${inc3x}" | awk '{printf "%.6f",($1)/2}'`
+	bw=`echo "${lambda_max}" "${lambda_min}" "${pixn}" | awk '{printf "%.6f",($1-$2)/$3}'`
+	boundsh=-R${lambda_min}/${lambda_max}/0/${ymax}
+	projh=-JX8/12
+	for i in $(seq 1 1 ${ndset})  ; do
+		ii=`echo ${i} + 1 | bc`
+		if [[ ${ndset} == "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/:"p(@~l@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			elif [[ ${normprob} == "0" ]] ; then
+				awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			fi
+		elif [[ ${ndset} > "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/:"p(@~l@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/:"p(@~l@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/:"p(@~l@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			elif [[ ${normprob} == "0" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~l@~":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			fi
+		fi
+	done
+	# Convert ps to png and move file
+	ps2raster ${psfile} -A -Tg -E300
+	mv ${pngfile} ${folderm}/${noisepng}
+elif [[ ${usdn} == "0" ]] ; then
+	echo "----------> Plotting posterior probability density of noise..."
+	totsamp=`awk '{sum+=$2} END {printf "%d",sum}' ${bin_dir}/${noisefile}`
+	ncol=`echo ${ndset} + 1 | bc`
+	awk '{for(i=2;i<=NF;i++){print $i}}' ${bin_dir}/${noisefile} > noise1.tmp
+	# Change paper size in gmtdefaults
+	gmtset PAPER_MEDIA = Custom_25cx30c
+	if [[ ${normprob} == "1" ]] ; then
+		ymax=`awk 'max=="" || $1/'${totsamp}' > max {max=$1/'${totsamp}'} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=1
+		inc4y=1
+	elif [[ ${normprob} == "0" ]] ; then
+		ymax=`awk 'max=="" || $1 > max {max=$1} END {print max}' noise1.tmp`
+		rm noise1.tmp
+		inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+		inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+	fi
+	inc3x=`echo "${errtmax}" 0 | awk '{printf "%.6f",($1-$2)/4}'`
+	inc4x=`echo "${inc3x}" | awk '{printf "%.6f",($1)/2}'`
+	bw=`echo "${errtmax}" "${errtmin}" "${pixn}" | awk '{printf "%.6f",($1-$2)/$3}'`
+	boundsh=-R${errtmin}/${errtmax}/0/${ymax}
+	projh=-JX8/12
+	for i in $(seq 1 1 ${ndset})  ; do
+		ii=`echo ${i} + 1 | bc`
+		if [[ ${ndset} == "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/:"p(@~s@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			elif [[ ${normprob} == "0" ]] ; then
+				awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -Xa5 -Ya2.5 > ${psfile}
+			fi
+		elif [[ ${ndset} > "1" ]] ; then
+			if [[ ${normprob} == "1" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/:"p(@~s@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/:"p(@~s@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'/'${totsamp}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/:"p(@~s@~|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			elif [[ ${normprob} == "0" ]] ; then
+				if [[ ${i} == "1" ]] ; then
+					awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa5 -Ya2.5 > ${psfile}
+				elif [[ ${i} == ${ndset} ]] ; then
+					awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -Xa5 -Ya2.5 >> ${psfile}
+				else
+					awk '{print $1,$'${ii}'}' ${bin_dir}/${noisefile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"@~s@~ (s)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -O -Xa5 -Ya2.5 >> ${psfile}
+				fi
+			fi
+		fi
+	done
+	# Convert ps to png and move file
+	ps2raster ${psfile} -A -Tg -E300
+	mv ${pngfile} ${folderm}/${noisepng}
+fi
+
+
+# Plot histogram of velocity posterior
+echo "----------> Plotting posterior probability density of velocities..."
+awk -v p1t=`echo ${p1lat}` -v p1p=`echo ${p1long}` -v p2t=`echo ${p2lat}` -v p2p=`echo ${p2long}` -v p3t=`echo ${p3lat}` -v p3p=`echo ${p3long}` -v p4t=`echo ${p4lat}` -v p4p=`echo ${p4long}` -v vf=`echo ${velsfile}` '
+	{ if(NR==4) print "../" vf "                       c: Input file (binary)";
+	else if(NR==5) print "Velposts                       c: Output file (text - gets renamed to e.g. Velposts_point_1.out)";
+	else if(NR==6) print "4                              c: Number of points";
+	else if(NR==7) print p1t "   " p1p "                      c: Coordinates";
+	else if(NR==8) print p2t "   " p2p ;
+	else if(NR==9) print p3t "   " p3p ;
+	else if(NR==10) print p4t "   " p4p ;
+	else print $0 }
+	' ${plot_dir}/velpost.in > ${plot_dir}/velpost1.in
+mv ${plot_dir}/velpost1.in ${plot_dir}/velpost.in
+./velpost
+xmax=`echo "${velavg}" "${theta}" | awk '{printf "%.2f",$1+$2}'`
+xmin=`echo "${velavg}" "${theta}" | awk '{printf "%.2f",$1-$2}'`
+inc3x=0.8 #`echo "${xmax}" "${xmin}" | awk '{printf "%.2f",($1-$2)/4}'`
+inc4x=0.4 #`echo "${inc3x}" | awk '{printf "%.6f",($1)/2}'`
+bw=`echo "${theta}" "${pixv}" | awk '{printf "%.6f",2*$1/$2}'`
+projh=-JX6/6
+totsamp=`awk '{sum+=$2} END {printf "%d",sum}' Velposts_point_1.out`
+if [[ ${normprob} == "1" ]] ; then
+	inc3y=1
+	inc4y=1
+	# Point 1
+	ymax=`awk 'max=="" || $2/'${totsamp}' > max {max=$2/'${totsamp}'} END {print max}' Velposts_point_1.out`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2/'${totsamp}'}' Velposts_point_1.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/:"p(v|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa2 -Ya10 > ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p1lat}N ${p1long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -K -P -Xa2 -Ya10 >> ${psfile}
+	# Point 2
+	ymax=`awk 'max=="" || $2/'${totsamp}' > max {max=$2/'${totsamp}'} END {print max}' Velposts_point_2.out`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2/'${totsamp}'}' Velposts_point_2.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/:"p(v|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -K -Xa10 -Ya10 >> ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p2lat}N ${p2long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -K -P -Xa10 -Ya10 >> ${psfile}
+	# Point 3
+	ymax=`awk 'max=="" || $2/'${totsamp}' > max {max=$2/'${totsamp}'} END {print max}' Velposts_point_3.out`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2/'${totsamp}'}' Velposts_point_3.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/:"p(v|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -K -Xa2 -Ya2 >> ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p3lat}N ${p3long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -K -P -Xa2 -Ya2 >> ${psfile}
+	# Point 4
+	ymax=`awk 'max=="" || $2/'${totsamp}' > max {max=$2/'${totsamp}'} END {print max}' Velposts_point_4.out`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2/'${totsamp}'}' Velposts_point_4.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/:"p(v|d)": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -K -Xa10 -Ya2 >> ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p4lat}N ${p4long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -P -Xa10 -Ya2 >> ${psfile}
+elif [[ ${normprob} == "0" ]] ; then
+	# Point 1
+	ymax=`awk 'max=="" || $2 > max {max=$2} END {print max}' Velposts_point_1.out`
+	inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+	inc4y=`echo "${inc3y}" | awk '{printf "%.6f",($1)/2}'`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2}' Velposts_point_1.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -K -Xa2 -Ya10 > ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p1lat}N ${p1long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -K -P -Xa2 -Ya10 >> ${psfile}
+	# Point 2
+	ymax=`awk 'max=="" || $2 > max {max=$2} END {print max}' Velposts_point_2.out`
+	inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+	inc4y=`echo "${inc3y}" | awk '{printf "%.6f",($1)/2}'`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2}' Velposts_point_2.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -K -Xa10 -Ya10 >> ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p2lat}N ${p2long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -K -P -Xa10 -Ya10 >> ${psfile}
+	# Point 3
+	ymax=`awk 'max=="" || $2 > max {max=$2} END {print max}' Velposts_point_3.out`
+	inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+	inc4y=`echo "${inc3y}" | awk '{printf "%.6f",($1)/2}'`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2}' Velposts_point_3.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -K -Xa2 -Ya2 >> ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p3lat}N ${p3long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -K -P -Xa2 -Ya2 >> ${psfile}
+	# Point 4
+	ymax=`awk 'max=="" || $2 > max {max=$2} END {print max}' Velposts_point_4.out`
+	inc3y=`echo "${ymax}" | awk '{printf "%d",($1)/4}'`
+	inc4y=`echo "${inc3y}" | awk '{printf "%.6f",($1)/2}'`
+	boundsh=-R${xmin}/${xmax}/0/${ymax}
+	awk '{print $1,$2}' Velposts_point_4.out | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Group velocity (km s@+-1@+)":/a${inc3y}f${inc4y}:"Number of samples": -Sb${bw}u -Ggrey40 -Wthinnest,grey40 -P -O -K -Xa10 -Ya2 >> ${psfile}
+	echo "${xmax} ${ymax} 10 0 1 RB ${p4lat}N ${p4long}E" | pstext ${boundsh} ${projh} -Gblack -Wwhite,o -N -O -P -Xa10 -Ya2 >> ${psfile}
+fi
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${velspng}
+
+# Plot window-averaged number of cells as a function of iterations
+echo "----------> Plotting window-averaged number of cells as a function of iterations..."
+ymax=${ncell_max}
+ymin=${ncell_min}
+inc3y=`echo "${ymax}" "${ymin}" | awk '{printf "%d",($1-$2)/4}'`
+inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+xmin=0 #`echo "${window}" | awk '{printf "%d",($1-1)/2+1}'`
+xmax=${Nsamplestot} #`echo "${window}" "${Nsamplestot}" "${Nburnintot}" | awk '{printf "%d",$2+$3}'` #'{printf "%d",($1-1)/2+$2+$3-$1}'`
+inc3x=`echo "${xmax}" "${xmin}" | awk '{printf "%d",($1-$2)/4}'`
+inc4x=`echo "${inc3x}" | awk '{printf "%.2f",($1)/2}'`
+boundsh=-R${xmin}/${xmax}/${ymin}/${ymax}
+projh=-JX15/12
+awk '{print ('${window}'-1)/2+NR,$1}' ${bin_dir}/${ncelifile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Sample":/a${inc3y}f${inc4y}:"Window-averaged number of cells": -Wthicker,red -P -Xa5 -Ya2.5 > ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${cellsipng}
+
+# Plot window-averaged misfit as a function of iterations
+echo "----------> Plotting window-averaged misfit as a function of iterations..."
+ymax=`awk 'max=="" || $1 > max {max=$1} END {print max}' ${bin_dir}/${misfifile}`
+ymin=0
+inc3y=`echo "${ymax}" "${ymin}" | awk '{printf "%d",($1-$2)/4}'`
+inc4y=`echo "${inc3y}" | awk '{printf "%.2f",($1)/2}'`
+xmin=0 #`echo "${window}" | awk '{printf "%d",($1-1)/2+1}'`
+xmax=${Nsamplestot} #`echo "${window}" "${Nsamplestot}" "${Nburnintot}" | awk '{printf "%d",$2+$3}'` #'{printf "%d",($1-1)/2+$2+$3-$1}'`
+inc3x=`echo "${xmax}" "${xmin}" | awk '{printf "%d",($1-$2)/4}'`
+inc4x=`echo "${inc3x}" | awk '{printf "%.2f",($1)/2}'`
+boundsh=-R${xmin}/${xmax}/${ymin}/${ymax}
+projh=-JX15/12
+awk '{print ('${window}'-1)/2+NR,$1}' ${bin_dir}/${misfifile} | psxy ${boundsh} ${projh} -Ba${inc3x}f${inc4x}:"Sample":/a${inc3y}f${inc4y}:"Window-averaged misfit": -Wthicker,red -P -Xa5 -Ya2.5 > ${psfile}
+# Convert ps to png and move file
+ps2raster ${psfile} -A -Tg -E300
+mv ${pngfile} ${folderm}/${misfipng}
+
+
+exit

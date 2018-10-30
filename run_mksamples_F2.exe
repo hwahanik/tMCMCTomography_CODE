@@ -1,0 +1,138 @@
+#!/bin/sh
+
+# Initialize the environment	
+# Use Faramir compiler with MPI 
+# Use the GNU compiler with OpenMPI
+
+# Set work and bin directories.	
+
+bin_dir=RJ_MCMC_TOMO/bin
+tomotime=`date +"%a_%d_%m_%Y_%H:%M:%S"`	# identify the start of mksamples by date and time
+mkdir ${bin_dir}/${tomotime}		# create a directory where all partial results are saved
+
+# Set a number of parameters
+samples=10      		        # Samples in one run of mksamples
+Nrun=1					# Number of runs of mksamples
+# proc=16				# How many processors?
+runtime=01:00:00			# Runtime for one run of mksamples    
+sleeptime1=0.5m				# Sleep time between checks ups
+sleeptime2=0.7m				# Sleep time for check ups
+
+# Move to bin directory
+cd ${bin_dir}
+
+
+### --------------------------------------------------------- ###
+
+# This function checks if a job has finished executing
+function checkjob {	
+ 
+	local jobnumber=$1
+	qstat > jobstat.txt
+	grep "^${jobnumber}" jobstat.txt > line.txt
+
+	if [ -s line.txt ] ; then
+		local jobstatus=`awk '{print $5}' line.txt`		
+		echo 'Jobstatus of job' ${jobnumber} >> test_program.txt
+		echo 'Jobstatus of job' ${jobnumber} is ${jobstatus} >> test_program.txt
+		echo 'Time is' `date +"%a_%d_%m_%Y_%H:%M:%S"` >> test_program.txt	
+	else 
+		echo 'Job' ${jobnumber} 'does not exist' >> test_program.txt	
+	fi
+	
+	echo ${jobstatus}
+}
+
+### --------------------------------------------------------- ###
+
+
+	### --- RUN THE INVERSIONS AS SUCCESSIVE RUNS OF MKSAMPLES --- ###
+	echo Running tomography...
+
+	Nsamplestot=`echo ${samples}*${Nrun} | bc`
+	
+	### --------------------- SUBMIT MKSAMPLES --------------------- ##
+
+	jobname=mksamples
+	#awk -v jname=`echo ${jobname}` '
+	#	{ if(NR==4) print "#$ -N " jname ;
+	#	else if(NR==16) print "mpirun -np 12 ./" jname ;
+	#	else print $0 }
+	#       ' tomosub_F2.pbs > tomosub_F1.pbs
+	#       mv tomosub_F1.pbs tomosub_F2.pbs
+	# Loop over the total number of runs
+	nn=1
+	while [ ${nn} -le ${Nrun} ] ; do	
+		awk -v rn=`echo ${nn}` -v samp=`echo ${samples}` '
+		{ if(NR==13) print rn "                               c: Run number (=1 if first run, >1 if continuing from previous)";
+		else if(NR==14) print samp "                             c: Number of samples for current run";
+		else print $0 }
+		' mksamples.in > mksamples.aux
+		mv -f mksamples.aux mksamples.in
+		
+		qsub tomosub_F2.pbs > sub.txt		              
+		more sub.txt
+		# Get job number
+		jobn=`awk 'BEGIN{FS = "."}{print $1}' sub.txt`
+		echo Job ${jobn} is running in Gondor
+		echo Job ${jobname} 
+		echo Job number ${jobn} 
+		echo run ${nn} / number of runs  ${Nrun}
+		echo Number of samples in each run = ${samples} 
+
+		# Check if the job has completed at intervals of sleeptime1
+
+		echo 'Test for job' ${jobn} 'started at' `date +"%a_%d_%m_%Y_%H:%M:%S"` > test_program.txt
+		echo >> test_program.txt
+		echo Number of samples in each run = ${samples} >>  test_program.txt
+		echo >> test_program.txt
+		echo Number of runs = ${Nrun} >> test_program.txt
+		echo >> test_program.txt		
+
+		jobstatus="Q"		
+		while [[ "${jobstatus}" != "C" ]] ; do			
+			sleep ${sleeptime1}			
+			jobstatus=`checkjob ${jobn}`
+			echo Job ${jobn} jobstatus flag is ${jobstatus}
+		done	               
+
+		# Check if the job has completed successfully
+		sleep ${sleeptime2}			
+			
+		grep "Time taken by the code was" output.log > completed.txt
+
+		cat completed.txt 
+
+
+		if  [ -s completed.txt ] ; then
+			echo 'Job' ${jobn} 'succesful'
+			echo Saving and compressing run number ${nn}
+			# If the code has completed successfully, copy the (partial) results to a .zip folder before starting a new run
+			mkdir ${tomotime}/${jobname}_${nn}_job_${jobn}
+			sleep ${sleeptime2}						
+			cp last.tmp* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp sigma.tmp* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp arats.tmp* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp samples.out* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp ncells.out* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp sigmas.out* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp misfit.out* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp aratios.out* ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp parameters.dat ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cd ${tomotime}
+			 zip -r ${jobname}_${nn}_job_${jobn}.zip ${jobname}_${nn}_job_${jobn}
+			 rm  -r ${jobname}_${nn}_job_${jobn}
+			cd ..
+			nn=`echo ${nn} + 1 | bc`
+		else
+			# If the code crashed or got interrupted, only copy the job files to a .zip folder and identify the folder by suffix _FAIL
+			echo 'job' ${jobn} 'failed'
+			mkdir ${tomotime}/${jobname}_${nn}_job_${jobn}
+			mv ${jobname}.*${jobn} ${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cd ${tomotime}
+			zip -r ${jobname}_${nn}_job_${jobn}_FAIL.zip ${jobname}_${nn}_job_${jobn}
+			rm  -r ${jobname}_${nn}_job_${jobn}
+			cd ..
+		fi
+	done
+

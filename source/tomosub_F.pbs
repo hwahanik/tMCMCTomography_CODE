@@ -1,0 +1,84 @@
+
+#*******************************************************************************
+# SCR Cluster Job Submission Script
+# Prepared by Helmut Wahanik for RJTOMO Algorithm by Erica Galetti
+# Usage:
+
+# Declare a name for this job
+#PBS -S /bin/csh
+#PBS -N mksamples
+
+#PBS -e output.err
+#PBS -o output.log
+
+#Email you when the job completes. Remove # and update address
+# PBS -m ea
+#PBS -M ldapalias@slb.com 
+
+# Request wall time of hh:mm:ss
+# This is the maximum expected time for your job to complete. If the job has not
+# completed by the walltime then the job will be terminated.
+
+# Define number of processors to send to mpirun for MPI
+# Runs on 64 cpu's. For odd number of cpu's use, e.g., nodes=7:mpi:ppn=2+1 for
+# a job requiring 15 cpu's. For the example below you can equivalently do
+# nodes=32:mpi:ppn=1 but that's a waste of resources and you don't gain in
+# terms of performance 
+
+#PBS -l walltime=00:05:00
+#PBS -l nodes=1:ppn=8
+
+cd $PBS_O_WORKDIR
+
+#*******************************************************************************
+#A little useful information for the log file...
+echo Master process running on `hostname`
+echo Working directory is $PBS_O_WORKDIR
+
+echo Content of NODEFILE is `cat $PBS_NODEFILE`
+HOSTFILE=$PBS_NODEFILE
+
+# Calculate number of processes
+NP=`cat $HOSTFILE | wc -l | awk '{print $1}'`
+
+# Calculate number of nodes
+NN=`cat $HOSTFILE | uniq | wc -l | awk '{print $1}'`
+
+echo This job has allocated ${NP} processes
+echo This job has allocated ${NN} nodes
+
+#************************ CODE FOR EXPORTING LD_LIBRARY PATH ******************
+
+echo $LD_LIBRARY_PATH
+#module load openmpi/1.6.5/intel_2013.5.192
+
+OPENMPI_BASE_PATH=/usr/local/openmpi/1.4/intel_11.1/lib/openmpi
+export LD_LIBRARY_PATH=$OPENMPI_BASE_PATH/lib:$LD_LIBRARY_PATH
+
+#*******************************************************************************
+
+
+#*************************** COMMANDS ******************************************
+# Put in a timestamp
+echo Job started at `date +"%a_%d_%m_%Y_%H:%M:%S"`
+
+# Run the executable
+
+mpirun -hostfile $PBS_NODEFILE ./mksamples -x LD_LIBRARY_PATH=${LD_LIBRARY_PATH} 
+
+# Print the date again -- when finished
+echo Job finished at `date +"%a_%d_%m_%Y_%H:%M:%S"`
+
+#*******************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+

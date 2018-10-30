@@ -1,0 +1,4 @@
+sources.dat                             c: File of source coords
+receivers.dat                           c: File of receiver coords
+rayp.txt                                c: Output file (text)
+rayp.bin                                c: Output file (binary)

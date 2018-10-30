@@ -1,0 +1,3 @@
+raypath.dat                                c: Input file (binary)
+otimes.dat                                 c: File of raypath associations
+degdist.txt                                c: Output file (text)

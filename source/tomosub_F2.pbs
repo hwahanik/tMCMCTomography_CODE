@@ -1,0 +1,79 @@
+#!/bin/sh
+
+#*******************************************************************************
+# SCR Cluster Job Submission Script
+# Prepared by Helmut Wahanik for RJTOMO Algorithm by Erica Galetti
+#*******************************************************************************
+
+# Usage:
+
+# Import environment variables
+# Declare a name for this job
+# Save error and output 
+
+#PBS -V
+#PBS -N mksamples
+
+
+#Email you when the job completes. Remove # and update address
+
+#PBS -m ea
+#PBS -M ldapalias@slb.com
+
+# Request wall time of hh:mm:ss
+# Define number of processors to send to mpirun for MPI
+
+#PBS -l walltime=00:30:00
+#PBS -l nodes=2:ppn=8
+#PBS -d /home/user/HWahanik/RJMCMC_TOMO_CODE/RJ_MCMC_TOMO/bin/
+#PBS -o output.log
+#PBS -j oe
+
+#*******************************************************************************
+#A little useful information for the log file...
+
+echo Master process running on `hostname`
+echo Working directory is $PBS_O_WORKDIR
+
+echo Content of NODEFILE is `cat $PBS_NODEFILE`
+HOSTFILE=$PBS_NODEFILE
+
+#echo Content of LD_LIBRARY_PATH is $LD_LIBRARY_PATH
+
+# Calculate number of processes
+NP=`cat $HOSTFILE | wc -l | awk '{print $1}'`
+# Calculate number of nodes
+NN=`cat $HOSTFILE | uniq | wc -l | awk '{print $1}'`
+
+echo This job has allocated ${NP} processes
+echo This job has allocated ${NN} nodes
+#*******************************************************************************
+
+
+#*************************** COMMANDS ******************************************
+
+# Put in a timestamp
+echo Job started at `date +"%a_%d_%m_%Y_%H:%M:%S"`
+
+# Run the executable
+
+mpirun -hostfile $PBS_NODEFILE -x LD_LIBRARY_PATH=${LD_LIBRARY_PATH} ./mksamples 
+
+# Print the date again -- when finished
+echo Job finished at `date +"%a_%d_%m_%Y_%H:%M:%S"`
+
+#*******************************************************************************
+
+
+
+#*************************** EXTRA *********************************************
+#Variants of mpi command
+#mpiexec -x LD_LIBRARY_PATH=${LD_LIBRARY_PATH} -n 16 -machinefile $PBS_NODEFILE ./mksamples 
+#mpiexec -envuser -hostfile $PBS_NODEFILE ./mksamples 
+#mpirun --bynode -np 2 ./mksamples -x LD_LIBRARY_PATH=${LD_LIBRARY_PATH} 
+#mpirun -np 8 ./mksamples
+#*************************** EXTRA *********************************************
+
+
+
+

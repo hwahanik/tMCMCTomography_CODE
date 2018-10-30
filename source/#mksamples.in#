@@ -1,0 +1,93 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c INPUT PARAMETERS
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Input files
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+sources.dat                     c: File containing source positions
+receivers.dat                   c: File containing receiver positions
+otimes.dat                      c: File containing source-receiver associations
+raypath.dat                     c: File containing initial raypath geometry (not used if input at line 69 is 2)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for Markov chain (go to line 60 to set the raypath update parameters)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+1                               c: Run number (=1 if first run, >1 if continuing from previous)
+100000                          c: Number of samples for current run
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Prior distribution
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+10     300                      c: Minimum and maximum number of cells
+3.5                             c: Mean of the uniform velocity prior
+2.0                             c: Lower and upper range of velocity (theta)
+2                               c: Sigma (data noise) is (0) independent of raypath, (1) depends on source-receiver distance, (2) depends on actual raypath length, (3) is proportional to sigma from data, (4) is fixed (from data)
+0                               c: Use Gaussian (=0) or Laplacian (=1) probability distribution for likelihood
+0.001     30                    c: Lower and upper bounds for noise parameter (used only if line 21 =0)
+0.1 1.5 0.1 2.0                 c: Lower and upper range of data noise gradient and y-intercept (used only if line 21 =1 or =2)
+0.1 10                          c: Lower and upper range of lambda (used only if line 21 =3)
+61     48                       c: N-S range of grid (degrees)
+-9     3                        c: W-E range of grid (degrees)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c How many separate datasets are being integrated?
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+1                               c: Number of datasets
+datasets.txt                    c: File containing datasets associations
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Standard deviations for proposal distributions
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+0.5                             c: Proposal on velocity
+0.2                             c: Proposal on velocity for DR proposal
+10                              c: Proposal on change in position (percentage of latitude/longitude range)
+1.5                             c: Proposal on change in position for DR proposal (percentage of latitude/longitude range)
+0.1                             c: Proposals on change in data noise (used only if line 21 =0)
+0.1 0.1                         c: Proposals on change in noise gradient and y-intercept (used only if line 21 =1 or =2)
+0.5                             c: Proposals on change in lambda (used only if line 21 =3)
+0.01                            c: Proposal on velocity when Birth move
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for displaying results
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+10000                           c: Display results at this interval
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for the Voronoi tesselation (not very important)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+620100                          c: npoint_max (maximum total number of ray points)
+15000                           c: nray_max (maximum number of rays)
+20000                           c: nt_max (maximum number of triangles)
+10000                           c: nv_max (size of work arrays)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c OUTPUT FILES
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+samples                         c: File containing Voronoi cells (gets renamed to e.g. samples.out1 for processor 1)
+ncells                          c: File containing number of cells (gets renamed to e.g. ncells.out1 for processor 1)
+sigmas                          c: File containing sigma (data noise) parameters (gets renamed to e.g. sigmas.out1 for processor 1)
+misfit                          c: File containing misfit (gets renamed to e.g. misfit.out1 for processor 1)
+aratios                         c: File containing acceptance ratios (gets renamed to e.g. aratios.out1 for processor 1)
+0                               c: Output samples? (-1=all processors, 0=no, >0=processor number)
+100                             c: Interval of sample output
+Sample                          c: Name of file (without extension) containing one sample (gets renamed to e.g. Sample_12345_run1_p1_acc.vtx or .vor)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c OTHER PARAMETERS (USED IF RAYPATHS ARE UPDATED)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+2                               c: Update raypaths? (0=no, 1=yes at interval specified below, 2=yes at each proposed model)
+10000                           c: Recalculate raypath geometry at this interval of samples (only used if input at line 69 =1)
+1                               c: Update ALL raypaths? (1=yes, 0=no, only those going through the affected cell and its neighbours) (only if input at line 69 =2)
+0                               c: Save last model used to update raypaths (only if input at line 69 =1)? (-1=all processors, 0=no, >0=processor number)
+Update                          c: Name of file (without extension) containing the last sample used to update raypaths (only if input at line 69 =1)
+0                               c: Write file of last updated rays (e.g. rayupdate_p1.dat)? (-1=all processors, 0=no, >0=processor number). Choice valid if line 69 =2; if line 69 =1, then file of updated rays is saved by default.
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Following parameters used to recalculate raypaths
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+209   193                       c: Number of velocity pixels in (latitude, longitude) to compute raypaths (coarser grid = faster code)
+1    1                          c: Grid dicing in latitude and longitude
+1                               c: Apply source grid refinement? (0=no,1=yes)
+4    8                          c: Dicing level and extent of refined grid
+6371.0                          c: Earth radius in km
+1                               c: Use first-order(0) or mixed-order(1) scheme
+0.5                             c: Narrow band size (0-1) as fraction of nnx*nnz
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c If there are errors in the raypaths, save sample velocity model
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+0                               c: NOT IN USE!!! Save velocity model (only if input at line 63 is 1 or 2)? (0=no,1=yes)
+Crazy                           c: NOT IN USE!!! Name of file (without extension) containing the last sample used to update raypaths (only if input above is 1)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Set likelihood to unity?
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+0                               c: For testing purposes: (0) use data or (1) set likelihood to unity

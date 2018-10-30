@@ -1,0 +1,44 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c INPUT PARAMETERS
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Input files
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+samples                         c: File containing Voronoi cells (gets renamed to e.g. samples.out1 for processor 1)
+ncells                          c: File containing number of cells (gets renamed to e.g. ncells.out1 for processor 1)
+sigmas                          c: File containing sigma (data noise) parameters (gets renamed to e.g. sigmas.out1 for processor 1)
+misfit                          c: File containing misfit (gets renamed to e.g. misfit.out1 for processor 1)
+aratios                         c: File containing acceptance ratios (gets renamed to e.g. aratios.out1 for processor 1)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for Markov chain
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+20000                           c: Burn-in period
+1000                            c: Thinning of the chain
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for displaying results
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+100                             c: Average window for monitoring convergence
+209    193                      c: Number of velocity pixels in (latitude, longitude)
+0.5    0.5                      c: Size of pixels in degrees (latitude, longitude) for calculation of Voronoi centre density
+150    100                      c: Number of pixels in velocity and data noise
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c OUTPUT FILES
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+Average.out                     c: Average solution map 
+Stdev.out                       c: Map of model uncertainty
+Median.out                      c: Median map
+Maximum.out                     c: Maximum map
+Ncellsi.out                     c: Number of cells as a function of iterations
+Misfit.out                      c: Misfit as a function of iterations
+Ncell.out                       c: Posterior distribution on the number of cells
+Noise.out                       c: Posterior distribution on data noise
+Vels.out                        c: Posterior distribution on velocities (binary file)
+Voro                            c: Position of initial and final Voronoi centres (gets renamed to e.g. Voro.ini for initial and Voro.fin for final)
+Node                            c: Density of Voronoi centres (gets renamed to e.g. Node.ini for initial and Node.fin for final)
+-1                              c: Output initial and last model? (-1=all processors, 0=no, >0=processor number)
+First                           c: Name of file (without extension) containing initial model (starting point of Markov chain)
+Last                            c: Name of file (without extension) containing last model (final point of Markov chain)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c IGNORE BAD MARKOV CHAINS
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+0                               c: Number of Markov chains to ignore (enter 0 if all chains are good)
+7                               c: Chain number (enter values one below the other)

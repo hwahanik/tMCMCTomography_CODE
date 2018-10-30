@@ -1,0 +1,140 @@
+#!/bin/bash
+
+# Initialise the environment
+. /etc/profile
+. /etc/profile.d/modules.sh
+
+# Use the Intel compiler with MPI
+module load intel   			# for SL6
+module load openmpi-intel   		# for SL6
+
+# Set work and bin directories
+PROJECT=/home/HWahanik/Documents/Research Projects/Geophysics /Transdimensional/rjmcmc_erica_distr
+work_dir=${PROJECT}/workdir
+bin_dir=${PROJECT}/RJ_MCMC_TOMO/bin
+tomotime=`date +"%a_%d_%m_%Y_%H:%M:%S"`	# identify the start of mksamples by date and time
+mkdir ${bin_dir}/${tomotime}		# create a directory where all partial results are saved
+
+# Set a number of parameters
+samples=100000				# Samples in one run of mksamples
+Nrun=30					# Number of runs of mksamples
+proc=16					# How many processors?
+runtime=48:00:00			# Runtime for one run of mksamples
+sleeptime1=30m				# Sleep time between checks for job completion
+
+# Move to bin directory
+cd ${bin_dir}
+
+### --------------------------------------------------------- ###
+# This function checks if a job has finished executing
+function checkjob {
+	
+	local jobnumber=$1
+	qstat > jobstat.txt
+	grep "^${jobnumber} " jobstat.txt > line.txt
+	local donej=0
+
+	if [ -s line.txt ] ; then
+		local jobstat=`awk '{print $5}' line.txt`
+	else
+		#echo Job ${jobnumber} does not exist
+		local donej=1
+	fi
+	echo ${donej}
+}
+### --------------------------------------------------------- ###
+
+# Prepare example submission script for MPI jobs
+echo Preparing submission script...
+
+echo "#!/bin/sh" > tomosub.sh
+echo >> tomosub.sh
+echo "# Grid Engine Options" >> tomosub.sh
+echo "#$ -N mksamples" >> tomosub.sh
+echo "#$ -cwd" >> tomosub.sh
+echo "#$ -l h_rt=${runtime}" >> tomosub.sh
+
+echo "#$ -pe openmpi_fillup_mark2 ${proc}" >> tomosub.sh
+
+echo "#$ -R y" >> tomosub.sh
+echo >> tomosub.sh
+echo "# Initialise the environment" >> tomosub.sh
+echo . /etc/profile >> tomosub.sh
+echo . /etc/profile.d/modules.sh >> tomosub.sh
+echo >> tomosub.sh
+
+echo "# Use the Intel v12.0 compiler with IntelMPI" >> tomosub.sh
+echo module load intel >> tomosub.sh   		# for SL6
+echo module load openmpi-intel >> tomosub.sh   	# for SL6
+
+echo >> tomosub.sh
+echo "# Launch your MPI program using the Ethernet network" >> tomosub.sh
+echo "mpiexec -np \$NSLOTS ./mksamples" >> tomosub.sh   
+
+	### --- RUN THE INVERSIONS AS SUCCESSIVE RUNS OF MKSAMPLES --- ###
+	echo Running tomography...
+
+
+	Nsamplestot=`echo ${samples}*${Nrun} | bc`
+	
+	### --------------------- SUBMIT MKSAMPLES --------------------- ###
+	jobname=mksamples
+	awk -v jname=`echo ${jobname}` '
+		{ if(NR==4) print "#$ -N " jname ;
+		else if(NR==19) print "mpiexec -np $NSLOTS ./" jname ;
+		else print $0 }
+	  ' tomosub.sh > tomosub1.sh
+	mv tomosub1.sh tomosub.sh
+
+	# Loop over the total number of runs
+	nn=1
+	while [ ${nn} -le ${Nrun} ] ; do
+		awk -v rn=`echo ${nn}` -v samp=`echo ${samples}` '
+		{ if(NR==13) print rn "                               c: Run number (=1 if first run, >1 if continuing from previous)";
+		else if(NR==14) print samp "                          c: Number of samples for current run";
+		else print $0 }
+		' mksamples.in > mksamples1.in
+		mv mksamples1.in mksamples.in 
+		qsub tomosub.sh > sub.txt		
+		more sub.txt
+		# Get job number
+		jobn=`awk '{print $3}' sub.txt`
+		echo ${jobname} job number is ${jobn} - ${nn}/${Nrun}
+		# Check if the job has completed at intervals of sleeptime1
+		done=0
+
+		while [[ ${done} == "0" ]] ; do
+			sleep ${sleeptime1}
+			done=`checkjob ${jobn}`
+		done
+		# Check if the job has completed successfully
+		grep "Time taken by the code was" ${jobname}.o${jobn} > completed.txt
+		if  [ -s completed.txt ] ; then
+			# If the code has completed successfully, copy the (partial) results to a .zip folder before starting a new run
+			mkdir ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}
+			mv ${jobname}.*${jobn} ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp last.tmp* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp sigma.tmp* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp arats.tmp* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp samples.out* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp ncells.out* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp sigmas.out* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp misfit.out* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp aratios.out* ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cp parameters.dat ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cd ${bin_dir}/${tomotime}
+			zip -r ${jobname}_${nn}_job_${jobn}.zip ${jobname}_${nn}_job_${jobn}
+			rm -r ${jobname}_${nn}_job_${jobn}
+			cd ${bin_dir}
+			nn=`echo ${nn} + 1 | bc`
+		else
+			# If the code crashed or got interrupted, only copy the job files to a .zip folder and identify the folder by suffix _FAIL
+			mkdir ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}
+			mv ${jobname}.*${jobn} ${bin_dir}/${tomotime}/${jobname}_${nn}_job_${jobn}/
+			cd ${bin_dir}/${tomotime}
+			zip -r ${jobname}_${nn}_job_${jobn}_FAIL.zip ${jobname}_${nn}_job_${jobn}
+			rm -r ${jobname}_${nn}_job_${jobn}
+			cd ${bin_dir}
+		fi
+	done
+

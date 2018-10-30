@@ -1,0 +1,30 @@
+
+#**********************************************************************************
+# SCR Cluster Job Submission Script
+# Prepared by Helmut Wahanik for RJTOMO Algorithm by Erica Galetti / Helmut Wahanik
+#**********************************************************************************
+
+# Use:
+# Import environment variables, declare a name for this job, Save error and output 
+# Email you when the job completes. Remove # and update address, request wall time 
+# of hh:mm:ss, define number of processors to send to mpirun for MPI.
+
+#PBS -S /bin/csh
+#PBS -N mksfast_mcmc9
+#PBS -o outfast_mcmc9.log
+#PBS -e outfast_mcmc9.err
+#PBS -d /home/user/HWahanik/RJMCMC_TOMO_FASTRAY_CODE/RJ_MCMC_TOMO/bin/
+## PBS -j oe
+#PBS -m ae
+#PBS -M HWahanik@slb.com
+#PBS -l walltime=80:00:00
+#PBS -l nodes=3:ppn=8
+
+#*************************** COMMANDS *********************************************
+
+echo Job started at `date +"%a_%d_%m_%Y_%H:%M:%S"`
+
+module load intel/2015.0.090 openmpi/1.8.3/intel_2015.0.090
+$MPIROOT/bin/mpirun -hostfile $PBS_NODEFILE ./mks_fastrays9
+
+echo Job finished at `date +"%a_%d_%m_%Y_%H:%M:%S"`

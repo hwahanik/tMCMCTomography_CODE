@@ -1,0 +1,7 @@
+datasets.txt                            c: File of datasets associations (input)
+gauserr.txt                             c: File of Gaussian errors (output)
+51                                      c: Random seed
+3721                                    c: Total number of raypaths (nsources*nreceivers)
+2                                       c: Number of datasets
+1                                       c: Standard deviations of noise (in s) for each dataset
+4

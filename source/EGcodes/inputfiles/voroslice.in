@@ -1,0 +1,19 @@
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Input file names
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+../Average.out                      c: Voronoi cell nodes
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Bounding box file
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+bound.gmt                     c: GMT plotting bounds for depth slice
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Velocity grid parameters
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+20    20                       c: Dicing in theta,phi
+grid2dva.z                     c: GMT output file for velocity slice
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c Parameters for the Voronoi tesselation
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+300                             c: Maximum number of cells (has to be larger than the number of cells in the input file)
+20000                           c: nt_max
+10000                           c: nv_max
